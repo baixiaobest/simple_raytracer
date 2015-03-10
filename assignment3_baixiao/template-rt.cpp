@@ -29,6 +29,8 @@ struct Sphere{
     float m_rgb[3];
     float m_Ka; float m_Kd; float m_Ks; float m_Kr;
     float m_n;
+    float m_t;
+    vec4 intersection;
     Sphere(string name, mat4 transform, mat4 invTransform, float r, float g, float b,
            float Ka, float Kd, float Ks, float Kr, float n):
            m_name(name), m_transform(transform), m_invTransform(invTransform),
@@ -56,6 +58,11 @@ struct Light{
 vector<vec4> g_colors;
 vector<Sphere> spheres;
 vector<Light> lights;
+
+float g_ambiant[3];
+float g_backgrond[3];
+
+string g_outputFile;
 
 float g_left;
 float g_right;
@@ -112,13 +119,27 @@ void parseLine(const vector<string>& vs)
         string name = vs[1];
         mat4 transform = Scale(toFloat(vs[5]), toFloat(vs[6]), toFloat(vs[7])) * Translate(toFloat(vs[2]), toFloat(vs[3]), toFloat(vs[4]));
         mat4 invTransform;
-        InvertMatrix(transform, invTransform);
+        InvertMatrix( Translate(toFloat(vs[2]), toFloat(vs[3]), toFloat(vs[4])) * Scale(toFloat(vs[5]), toFloat(vs[6]), toFloat(vs[7])), invTransform);
+        
         Sphere sphere(name, transform, invTransform, toFloat(vs[8]), toFloat(vs[9]), toFloat(vs[10]), toFloat(vs[11]), toFloat(vs[12]), toFloat(vs[13]), toFloat(vs[14]), toFloat(vs[15]));
         spheres.push_back(sphere);
     }
     if (vs[0] == "LIGHT") {
         Light light(vs[1], toFloat(vs[2]), toFloat(vs[3]), toFloat(vs[4]), toFloat(vs[5]), toFloat(vs[6]), toFloat(vs[7]));
         lights.push_back(light);
+    }
+    if (vs[0] == "BACK") {
+        g_backgrond[0] = toFloat(vs[1]);
+        g_backgrond[1] = toFloat(vs[2]);
+        g_backgrond[2] = toFloat(vs[3]);
+    }
+    if (vs[0] == "AMBIENT") {
+        g_ambiant[0] = toFloat(vs[1]);
+        g_ambiant[1] = toFloat(vs[2]);
+        g_ambiant[2] = toFloat(vs[3]);
+    }
+    if (vs[0] == "OUTPUT") {
+        g_outputFile = vs[1];
     }
 }
 
@@ -170,7 +191,83 @@ void setColor(int ix, int iy, const vec4& color)
 vec4 trace(const Ray& ray)
 {
     // TODO: implement your ray tracing routine here.
-    return vec4(0.0f, 0.0f, 0.0f, 1.0f);
+    vector<vec4> t_origin;
+    vector<vec4> t_dir;
+    vector<float> intersectionZ;
+    vec4 rgb; rgb.x = g_backgrond[0]; rgb.y = g_backgrond[1]; rgb.z = g_backgrond[2]; rgb.w = 1.0;
+    //inverse transform the ray
+    for (int i=0; i<spheres.size(); i++) {
+        t_origin.push_back(spheres[i].m_invTransform * ray.origin);
+        t_dir.push_back(spheres[i].m_invTransform * ray.dir);
+    }
+    //find intersection of ray for each sphere
+    for (int i=0; i<spheres.size(); i++) {
+        float A = length(t_dir[i]) * length(t_dir[i]);
+        float B = (t_origin[i][0]*t_dir[i][0] + t_origin[i][1]*t_dir[i][1] + t_origin[i][2]*t_dir[i][2]) * 2 / t_origin[i][3];
+        float C = t_origin[i][0]*t_origin[i][0] + t_origin[i][1]*t_origin[i][1] + t_origin[i][2]*t_origin[i][2] - 1;
+        float solnFactor = B*B - 4*A*C;
+        if (solnFactor >= 0) {
+            float t1 = (-B - sqrt(solnFactor))/(2*A);
+            float t2 = (-B + sqrt(solnFactor))/(2*A);
+            vec4 intersectionT1 = ray.origin + ray.dir * t1;
+            vec4 intersectionT2 = ray.origin + ray.dir * t2;
+            if (intersectionT1.z < g_near) {
+                intersectionZ.push_back(intersectionT1.z);
+                spheres[i].m_t = t1;
+                spheres[i].intersection = intersectionT1;
+            } else if (intersectionT2.z < g_near){
+                intersectionZ.push_back(intersectionT2.z);
+                spheres[i].m_t = t2;
+                spheres[i].intersection = intersectionT2;
+            } else{
+                intersectionZ.push_back(0);
+                spheres[i].m_t = 0;
+            }
+        } else if (solnFactor == 0){
+        }
+        else if (solnFactor < 0){
+            //no intersection for this sphere
+            intersectionZ.push_back(0);
+            spheres[i].m_t = 0;
+        }
+    }
+    
+    //get the front most sphere
+    float sphereNum = -1;
+    float minDistance = 1000;
+    for (int i=0; i<spheres.size(); i++) {
+        if ((0 - intersectionZ[i]) < minDistance && intersectionZ[i] != 0) {
+            minDistance = 0 - intersectionZ[i];
+            sphereNum = i;
+        }
+    }
+    //calculate the diffusion of sphere
+    if (sphereNum != -1){
+        vec4 normal = t_origin[sphereNum] + t_dir[sphereNum] * spheres[sphereNum].m_t;
+        normal.w = 0;
+        normal = spheres[sphereNum].m_invTransform * normal;
+        
+        /*rgb.x = spheres[sphereNum].m_rgb[0];
+        rgb.y = spheres[sphereNum].m_rgb[1];
+        rgb.z = spheres[sphereNum].m_rgb[2];*/
+        rgb.x = 0; rgb.y = 0; rgb.z = 0;
+        
+        for (int l=0; l<lights.size(); l++){
+            vec4 lightVec;
+            lightVec.x = lights[l].m_x-spheres[sphereNum].intersection.x;
+            lightVec.y = lights[l].m_y-spheres[sphereNum].intersection.y;
+            lightVec.z = lights[l].m_z-spheres[sphereNum].intersection.z;
+            lightVec.w = 0;
+            lightVec = lightVec / length(lightVec);
+        
+            float dotProduct = dot(normal, lightVec);
+            rgb.x += spheres[sphereNum].m_rgb[0]*lights[l].m_rgb[0]*spheres[sphereNum].m_Kd*dotProduct;
+            rgb.y += spheres[sphereNum].m_rgb[1]*lights[l].m_rgb[1]*spheres[sphereNum].m_Kd*dotProduct;
+            rgb.z += spheres[sphereNum].m_rgb[2]*lights[l].m_rgb[2]*spheres[sphereNum].m_Kd*dotProduct;
+        }
+    }
+    
+    return rgb;
 }
 
 vec4 getDir(int ix, int iy)
@@ -178,7 +275,9 @@ vec4 getDir(int ix, int iy)
     // TODO: modify this. This should return the direction from the origin
     // to pixel (ix, iy), normalized.
     vec4 dir;
-    dir = vec4(0.0f, 0.0f, -1.0f, 0.0f);
+    float x = g_left + (ix/(float)g_width)*(g_right-g_left);
+    float y = g_bottom + (iy/(float)g_height)*(g_top-g_bottom);
+    dir = vec4(x, y, -1.0f, 0.0f);
     return dir;
 }
 
