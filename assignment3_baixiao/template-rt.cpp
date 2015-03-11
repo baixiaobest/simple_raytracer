@@ -188,13 +188,23 @@ void setColor(int ix, int iy, const vec4& color)
 // -------------------------------------------------------------------
 // Ray tracing
 
-vec4 trace(const Ray& ray)
+vec4 trace(const Ray& ray, int depth=-1, int mySphere=-1)
 {
     // TODO: implement your ray tracing routine here.
+    if (depth == 0) {
+        return vec4(0.0f, 0.0f, 0.0f, 0.0f);
+    }
+    
     vector<vec4> t_origin;
     vector<vec4> t_dir;
     vector<float> intersectionZ;
-    vec4 rgb; rgb.x = g_backgrond[0]; rgb.y = g_backgrond[1]; rgb.z = g_backgrond[2]; rgb.w = 1.0;
+    vec4 rgb;
+    if (depth == -1){
+        rgb.x = g_backgrond[0]; rgb.y = g_backgrond[1]; rgb.z = g_backgrond[2]; rgb.w = 1.0;
+    }
+    else{
+        rgb.x = 0; rgb.y = 0; rgb.z = 0; rgb.w = 1.0;
+    }
     //inverse transform the ray
     for (int i=0; i<spheres.size(); i++) {
         t_origin.push_back(spheres[i].m_invTransform * ray.origin);
@@ -211,15 +221,17 @@ vec4 trace(const Ray& ray)
             float t2 = (-B + sqrt(solnFactor))/(2*A);
             vec4 intersectionT1 = ray.origin + ray.dir * t1;
             vec4 intersectionT2 = ray.origin + ray.dir * t2;
-            if (intersectionT1.z < g_near) {
+            
+            if (intersectionT1.z < g_near && t1 > 0) {
                 intersectionZ.push_back(intersectionT1.z);
                 spheres[i].m_t = t1;
                 spheres[i].intersection = intersectionT1;
-            } else if (intersectionT2.z < g_near){
+            } else if (intersectionT2.z < g_near && t2 > 0){
                 intersectionZ.push_back(intersectionT2.z);
                 spheres[i].m_t = t2;
                 spheres[i].intersection = intersectionT2;
             } else{
+                // no valid intersection
                 intersectionZ.push_back(0);
                 spheres[i].m_t = 0;
             }
@@ -241,8 +253,8 @@ vec4 trace(const Ray& ray)
             sphereNum = i;
         }
     }
-    //calculate the diffusion of sphere
-    if (sphereNum != -1){
+    //we can find an object
+    if (sphereNum != mySphere && sphereNum != -1){
         //get surface normal vector
         vec4 normal = t_origin[sphereNum] + t_dir[sphereNum] * spheres[sphereNum].m_t;
         normal.w = 0;
@@ -316,6 +328,19 @@ vec4 trace(const Ray& ray)
             rgb.y += spheres[sphereNum].m_rgb[1]*g_ambiant[1] * spheres[sphereNum].m_Ka;
             rgb.z += spheres[sphereNum].m_rgb[2]*g_ambiant[2] * spheres[sphereNum].m_Ka;
         }
+        
+        //reflection ray
+        vec4 nextRay_origin = spheres[sphereNum].intersection;
+        vec4 nextRay_dir = 2 * normal * dot(normal, eye) - eye;
+        nextRay_dir = nextRay_dir / length(nextRay_dir);
+        Ray nextRay; nextRay.origin = nextRay_origin; nextRay.dir = nextRay_dir;
+        if (depth == -1) {
+            vec4 reflection = trace(nextRay, 3, sphereNum);
+            rgb += spheres[sphereNum].m_Kr * reflection;
+        }else{
+            vec4 reflection = trace(nextRay, depth-1, sphereNum);
+            rgb += spheres[sphereNum].m_Kr * reflection;
+        }
     }
     //clamp the values
     rgb[0] = rgb[0] <= 1.0f ? rgb[0] : 1.0;
@@ -332,7 +357,7 @@ vec4 getDir(int ix, int iy)
     float x = g_left + (ix/(float)g_width)*(g_right-g_left);
     float y = g_bottom + (iy/(float)g_height)*(g_top-g_bottom);
     dir = vec4(x, y, -1.0f, 0.0f);
-    dir = dir / length(dir);
+    //dir = dir / length(dir);
     return dir;
 }
 
