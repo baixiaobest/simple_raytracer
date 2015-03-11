@@ -243,30 +243,84 @@ vec4 trace(const Ray& ray)
     }
     //calculate the diffusion of sphere
     if (sphereNum != -1){
+        //get surface normal vector
         vec4 normal = t_origin[sphereNum] + t_dir[sphereNum] * spheres[sphereNum].m_t;
         normal.w = 0;
         normal = spheres[sphereNum].m_invTransform * normal;
+        normal = normal / length(normal);
+        vec4 eye = -ray.dir;
+        eye = eye / length(eye);
         
-        /*rgb.x = spheres[sphereNum].m_rgb[0];
-        rgb.y = spheres[sphereNum].m_rgb[1];
-        rgb.z = spheres[sphereNum].m_rgb[2];*/
         rgb.x = 0; rgb.y = 0; rgb.z = 0;
-        
         for (int l=0; l<lights.size(); l++){
             vec4 lightVec;
+            vec4 refVec;
             lightVec.x = lights[l].m_x-spheres[sphereNum].intersection.x;
             lightVec.y = lights[l].m_y-spheres[sphereNum].intersection.y;
             lightVec.z = lights[l].m_z-spheres[sphereNum].intersection.z;
             lightVec.w = 0;
             lightVec = lightVec / length(lightVec);
+            
+            refVec = 2*normal*dot(normal, lightVec) - lightVec;
+            
+            //check for shadow
+            bool obstructed = false;
+            for (int i=0; i<spheres.size(); i++) { // loop through spheres
+                if (i == sphereNum) continue;
+                vec4 trans_origin = spheres[i].m_invTransform * spheres[sphereNum].intersection;
+                vec4 trans_dir = spheres[i].m_invTransform * lightVec;
+                float A = length(trans_dir) * length(trans_dir);
+                float B = (trans_origin[0]*trans_dir[0] + trans_origin[1]*trans_dir[1] + trans_origin[2]*trans_dir[2]) * 2 / trans_origin[3];
+                float C = trans_origin[0]*trans_origin[0] + trans_origin[1]*trans_origin[1] + trans_origin[2]*trans_origin[2] - 1;
+                float solnFactor = B*B - 4*A*C;
+                if (solnFactor >= 0) {
+                    float t1 = (-B - sqrt(solnFactor))/(2*A);
+                    float t2 = (-B + sqrt(solnFactor))/(2*A);
+                    if (t1 > 0 || t2 > 0){
+                        obstructed = true;
+                        break;
+                    }
+                }
+            }
+            if (obstructed) {
+                continue;
+            }
         
+            
             float dotProduct = dot(normal, lightVec);
+            if (dotProduct > 1 || dotProduct < 0) {
+                dotProduct = 0;
+            }
+            //add diffusion
             rgb.x += spheres[sphereNum].m_rgb[0]*lights[l].m_rgb[0]*spheres[sphereNum].m_Kd*dotProduct;
             rgb.y += spheres[sphereNum].m_rgb[1]*lights[l].m_rgb[1]*spheres[sphereNum].m_Kd*dotProduct;
             rgb.z += spheres[sphereNum].m_rgb[2]*lights[l].m_rgb[2]*spheres[sphereNum].m_Kd*dotProduct;
+            
+            //add specular component
+            float specularDotproduct = dot(refVec, eye);
+            float result = 1;
+            if (specularDotproduct > 1 || specularDotproduct < 0) {
+                specularDotproduct = 0;
+            }
+            for (int i=0; i<spheres[sphereNum].m_n; i++) {
+                result *= specularDotproduct;
+            }
+            rgb.x += lights[l].m_rgb[0]*spheres[sphereNum].m_Ks*result;
+            rgb.y += lights[l].m_rgb[1]*spheres[sphereNum].m_Ks*result;
+            rgb.z += lights[l].m_rgb[2]*spheres[sphereNum].m_Ks*result;
+            
+        }
+        //ambiant lights
+        if (spheres[sphereNum].m_Ka != 0) {
+            rgb.x += spheres[sphereNum].m_rgb[0]*g_ambiant[0] * spheres[sphereNum].m_Ka;
+            rgb.y += spheres[sphereNum].m_rgb[1]*g_ambiant[1] * spheres[sphereNum].m_Ka;
+            rgb.z += spheres[sphereNum].m_rgb[2]*g_ambiant[2] * spheres[sphereNum].m_Ka;
         }
     }
-    
+    //clamp the values
+    rgb[0] = rgb[0] <= 1.0f ? rgb[0] : 1.0;
+    rgb[1] = rgb[1] <= 1.0f ? rgb[1] : 1.0;
+    rgb[2] = rgb[2] <= 1.0f ? rgb[2] : 1.0;
     return rgb;
 }
 
@@ -278,6 +332,7 @@ vec4 getDir(int ix, int iy)
     float x = g_left + (ix/(float)g_width)*(g_right-g_left);
     float y = g_bottom + (iy/(float)g_height)*(g_top-g_bottom);
     dir = vec4(x, y, -1.0f, 0.0f);
+    dir = dir / length(dir);
     return dir;
 }
 
