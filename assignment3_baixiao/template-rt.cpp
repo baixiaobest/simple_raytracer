@@ -9,6 +9,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <ctime>
 using namespace std;
 
 int g_width;
@@ -222,11 +223,11 @@ vec4 trace(const Ray& ray, int depth=-1, int mySphere=-1)
             vec4 intersectionT1 = ray.origin + ray.dir * t1;
             vec4 intersectionT2 = ray.origin + ray.dir * t2;
             
-            if (intersectionT1.z < g_near && t1 > 0) {
+            if (intersectionT1.z < -g_near && t1 > 0) {
                 intersectionZ.push_back(intersectionT1.z);
                 spheres[i].m_t = t1;
                 spheres[i].intersection = intersectionT1;
-            } else if (intersectionT2.z < g_near && t2 > 0){
+            } else if (intersectionT2.z < -g_near && t2 > 0){
                 intersectionZ.push_back(intersectionT2.z);
                 spheres[i].m_t = t2;
                 spheres[i].intersection = intersectionT2;
@@ -278,7 +279,7 @@ vec4 trace(const Ray& ray, int depth=-1, int mySphere=-1)
             //check for shadow
             bool obstructed = false;
             for (int i=0; i<spheres.size(); i++) { // loop through spheres
-                if (i == sphereNum) continue;
+                //if (i == sphereNum) continue; //checking against itself
                 vec4 trans_origin = spheres[i].m_invTransform * spheres[sphereNum].intersection;
                 vec4 trans_dir = spheres[i].m_invTransform * lightVec;
                 float A = length(trans_dir) * length(trans_dir);
@@ -288,7 +289,7 @@ vec4 trace(const Ray& ray, int depth=-1, int mySphere=-1)
                 if (solnFactor >= 0) {
                     float t1 = (-B - sqrt(solnFactor))/(2*A);
                     float t2 = (-B + sqrt(solnFactor))/(2*A);
-                    if (t1 > 0 || t2 > 0){
+                    if (t1 > 0.01 || t2 > 0.01){  // make sure t is not close to zero
                         obstructed = true;
                         break;
                     }
@@ -414,7 +415,10 @@ void saveFile()
                 buf[y*g_width*3+x*3+i] = (unsigned char)(((float*)g_colors[y*g_width+x])[i] * 255.9f);
     
     // TODO: change file name based on input file name.
-    savePPM(g_width, g_height, "output.ppm", buf);
+    char * filename = new char[g_outputFile.size() + 1];
+    copy(g_outputFile.begin(), g_outputFile.end(), filename);
+    filename[g_outputFile.size()] = '\0';
+    savePPM(g_width, g_height, filename, buf);
     delete[] buf;
 }
 
@@ -424,6 +428,7 @@ void saveFile()
 
 int main(int argc, char* argv[])
 {
+    //float start = clock();
     if (argc < 2)
     {
         cout << "Usage: template-rt <input_file.txt>" << endl;
@@ -432,6 +437,7 @@ int main(int argc, char* argv[])
     loadFile(argv[1]);
     render();
     saveFile();
+    //printf("program lasts %f\n", (clock()-start)/(float)CLOCKS_PER_SEC);
 	return 0;
 }
 

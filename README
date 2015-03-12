@@ -1,0 +1,6 @@
+Baixiao Huang
+
+I passed all tests.
+Based on the timer test, the program lasts around 1 to 2 secs.
+trace function does recursive call 3 times.
+The Xcode is set up that, during run, test.txt will be passed as first argument.

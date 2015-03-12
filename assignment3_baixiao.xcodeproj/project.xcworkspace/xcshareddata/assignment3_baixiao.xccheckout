@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>IDESourceControlProjectFavoriteDictionaryKey</key>
+	<false/>
+	<key>IDESourceControlProjectIdentifier</key>
+	<string>BDE178BC-BF1E-47CF-94FD-3DCB12699CEB</string>
+	<key>IDESourceControlProjectName</key>
+	<string>assignment3_baixiao</string>
+	<key>IDESourceControlProjectOriginsDictionary</key>
+	<dict>
+		<key>87DC566D69DE95716EEEE34E80FB327B4513A335</key>
+		<string>https://github.com/baixiaobest/simple_raytracer.git</string>
+	</dict>
+	<key>IDESourceControlProjectPath</key>
+	<string>assignment3_baixiao.xcodeproj</string>
+	<key>IDESourceControlProjectRelativeInstallPathDictionary</key>
+	<dict>
+		<key>87DC566D69DE95716EEEE34E80FB327B4513A335</key>
+		<string>../..</string>
+	</dict>
+	<key>IDESourceControlProjectURL</key>
+	<string>https://github.com/baixiaobest/simple_raytracer.git</string>
+	<key>IDESourceControlProjectVersion</key>
+	<integer>111</integer>
+	<key>IDESourceControlProjectWCCIdentifier</key>
+	<string>87DC566D69DE95716EEEE34E80FB327B4513A335</string>
+	<key>IDESourceControlProjectWCConfigurations</key>
+	<array>
+		<dict>
+			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
+			<string>public.vcs.git</string>
+			<key>IDESourceControlWCCIdentifierKey</key>
+			<string>87DC566D69DE95716EEEE34E80FB327B4513A335</string>
+			<key>IDESourceControlWCCName</key>
+			<string>assignment3_baixiao</string>
+		</dict>
+	</array>
+</dict>
+</plist>
