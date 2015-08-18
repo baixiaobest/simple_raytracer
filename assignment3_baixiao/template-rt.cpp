@@ -236,9 +236,7 @@ vec4 trace(const Ray& ray, int depth=-1, int mySphere=-1)
                 intersectionZ.push_back(0);
                 spheres[i].m_t = 0;
             }
-        } else if (solnFactor == 0){
-        }
-        else if (solnFactor < 0){
+        }else if (solnFactor < 0){
             //no intersection for this sphere
             intersectionZ.push_back(0);
             spheres[i].m_t = 0;
@@ -272,6 +270,7 @@ vec4 trace(const Ray& ray, int depth=-1, int mySphere=-1)
             lightVec.y = lights[l].m_y-spheres[sphereNum].intersection.y;
             lightVec.z = lights[l].m_z-spheres[sphereNum].intersection.z;
             lightVec.w = 0;
+            vec4 u_lightVec = lightVec;
             lightVec = lightVec / length(lightVec);
             
             refVec = 2*normal*dot(normal, lightVec) - lightVec;
@@ -289,7 +288,7 @@ vec4 trace(const Ray& ray, int depth=-1, int mySphere=-1)
                 if (solnFactor >= 0) {
                     float t1 = (-B - sqrt(solnFactor))/(2*A);
                     float t2 = (-B + sqrt(solnFactor))/(2*A);
-                    if (t1 > 0.01 || t2 > 0.01){  // make sure t is not close to zero
+                    if (t1 > 0.01 || t2 > 0.01){ // make sure t is not close to zero
                         obstructed = true;
                         break;
                     }
